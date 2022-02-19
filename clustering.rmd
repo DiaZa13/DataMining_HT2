@@ -7,10 +7,20 @@ Librerias a utilizar
 library(hopkins)
 library(factoextra)
 library(NbClust)
+library(mice)
+library(dplyr)
+library(ggplot2)
+library(heatmaply)
+library(plotly)
+library(reshape2)
+library(ggcorrplot)
 ```
 Lectura del dataset
 ```{r}
 movies <- read.csv("movies.csv", stringsAsFactors = FALSE)
+# Casteando los valores string a numérico
+movies$castWomenAmount <- as.numeric(movies$castWomenAmount)
+movies$castMenAmount <- as.numeric(movies$castMenAmount)
 ```
 Variables cuantitativas
 * budget
@@ -30,12 +40,11 @@ Variables cuantitativas
 # Preprocesamiento de datos
 Explique qué variables no aportan información a la generación de grupos y por qué. Describa con qué variables calculará los grupos.
 
-Debido a que los algoritmos de clustering que se utizarán realizan la agrupación por medio de la medición de distancias entre las observaciones, por lo tal, las variables cualitativas no aportan información a la generación de grupos. Por otro lado, debido a que el promedio de votos se ve afectada por la cantidad de personas que votaron, y esto puede ser solo una persona, se determina que no es una variable que objetivamente pueda brindar información significativa al agrupamiento de los datos.
+Debido a que los algoritmos de clustering que se utilizarán realizan la agrupación por medio de la medición de distancias entre las observaciones, por lo tal, las variables cualitativas no aportan información a la generación de grupos. Por otro lado, debido a que el promedio de votos se ve afectada por la cantidad de personas que votaron, y esto puede ser solo una persona, se determina que no es una variable que objetivamente pueda brindar información significativa al agrupamiento de los datos.
 
-### Casteo y transformación de variables
-Si bien, dentro del dataset se cuenta con la popularidad de los actores, sin embargo al ser una lista, no proporciona información general de la popularidad del cast de la película, debido a esto, se trabajará con el promedio de la popularidad de los actores dentro de la película como la popularidad promedio del cast. Agregado a esto, también cabe resaltar que existen variables que si bien son cuantitativas, dentro del dataset el tipo de dato es un string por lo que también será necesario realizar un casting.
+### Preparación de variables
+Si bien, dentro del dataset se cuenta con la popularidad de los actores, sin embargo al ser una lista, no proporciona información general de la popularidad del cast de la película, debido a esto, se trabajará con el promedio de la popularidad de los actores dentro de la película como la popularidad promedio del cast.
 ```{r}
-library(dplyr)
 actors_popularity <- movies$actorsPopularity
 actors_popularity <- gsub('|', ',', actors_popularity, fixed = TRUE)
 actors_popularity <- as.list(strsplit(actors_popularity, ','))
@@ -43,18 +52,43 @@ actors_popularity <- lapply(actors_popularity, as.numeric)
 cast_popularity <- sapply(actors_popularity, mean)
 movies$actorsPopularity <- cast_popularity
 movies <- movies %>% rename(castPopularity = actorsPopularity)
-# Casteando los valores string a numérico
-movies$castWomenAmount <- as.numeric(movies$castWomenAmount)
-movies$castMenAmount <- as.numeric(movies$castMenAmount)
 ```
 
 ## Detección de valores perdidos
 ```{r}
-library(mice)
 md.pattern(movies, rotate.names = TRUE)
 # Dejando únicamente los casos completos para poder trabajar el agrupamiento
 movies <- movies[complete.cases(movies), ]
 ```
+## Correlación entre variables
+```{r}
+cualitative <- c('id', 'video', 'releaseDate','originalTitle', 'originalLanguage', 'title', 'homePage', 'director', 'genres', 'productionCompany', 'productionCompanyCountry', 'productionCountry', 'actors', 'actorsCharacter', 'voteAvg')
+clean_movies <- movies[ , !(names(movies) %in% cualitative)]
+correlation <- cor(clean_movies)
+p.mat <- cor_pmat(clean_movies)
+ggcorrplot(correlation, hc.order = TRUE, type = "lower",
+   outline.col = "white",
+   ggtheme = ggplot2::theme_gray,
+   colors = c("#6D9EC1", "white", "#E46726"),
+    lab = TRUE)
+
+
+```
+Con base en la correlación de las variables y para faciliar el procesos de agrupamiento y disminuir la dimensión de variables a agrupar, se sabe que se puede utilizar únicamente una de las variables correlacionadas. En este caso, las variables altamente correlacionadas son:
+* Cantidad de actores con Cantidad de mujeres en el cast
+* Inversión con Ganancias
+* Ganancias con cantidad de votos
+* Cantidad de países de producción con cantidad de hombres en el cast
+Con base en lo anterior, para el agrupamiento se dejará fuera la cantidad de mujeres en el cast, la inversión, la cantidad de votos y la cantidad de hombres en el cast.
+
+## Filtrado de outliers
+```{r}
+useless <- c('id', 'video', 'releaseDate','originalTitle', 'originalLanguage', 'title', 'homePage', 'director', 'genres', 'productionCompany', 'productionCompanyCountry', 'productionCountry', 'actors', 'actorsCharacter', 'voteAvg', 'castWomenAmount', 'budget', 'voteCount', 'castMenAmount', )
+clean_movies <- movies[ , !(names(movies) %in% cualitative)]
+data <- melt(clean_movies)
+ggplot(data, aes(x='variable', y='value')) + geom_boxplot()
+```
+
 ## Estandarización de variables
 Todas las características estén en un mismo rango de valores
 ```{r}
