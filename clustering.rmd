@@ -3,7 +3,7 @@ title: "R Notebook"
 output: html_document
 ---
 Librerías a utilizar
-```{r}
+```{r, message=FALSE,warning=FALSE}
 library(hopkins)
 library(factoextra)
 library(NbClust)
@@ -27,7 +27,7 @@ return(s1)
 }
 ```
 Lectura del dataset
-```{r}
+```{r, message=FALSE,warning=FALSE}
 movies <- read.csv("movies.csv", stringsAsFactors = FALSE)
 # Casteando los valores string a numérico
 movies$castWomenAmount <- as.numeric(movies$castWomenAmount)
@@ -55,7 +55,7 @@ Debido a que los algoritmos de clustering que se utilizarán realizan la agrupac
 
 ### Preparación de variables
 Si bien, dentro del dataset se cuenta con la popularidad de los actores, sin embargo al ser una lista, no proporciona información general de la popularidad del cast de la película, debido a esto, se trabajará con el promedio de la popularidad de los actores dentro de la película como la popularidad promedio del cast.
-```{r}
+```{r, message=FALSE,warning=FALSE}
 actors_popularity <- movies$actorsPopularity
 actors_popularity <- gsub('|', ',', actors_popularity, fixed = TRUE)
 actors_popularity <- as.list(strsplit(actors_popularity, ','))
