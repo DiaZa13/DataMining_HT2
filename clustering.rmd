@@ -15,6 +15,7 @@ library(plotly)
 library(reshape2)
 library(ggcorrplot)
 library(tidyverse)
+library(ppclust)
 ```
 Funciones generales
 ```{r}
@@ -169,7 +170,7 @@ Como se puede observar, tanto en el estadístico de hopkins, como en el gráfico
 ## ¿Cuál es el número de grupos a formar para los datos?
 Haga una gráfica de codo y explique la razón de la elección de la cantidad de clústeres con la que trabajará.
 ### Cantidad óptima de grupos según gráfica de codo
-```{r}
+```{r, message=FALSE,warning=FALSE}
 fviz_nbclust(clean_movies, kmeans, method = "wss") +
 labs(subtitle = "Número óptimo de clusters elbow-method")
 ```
@@ -188,4 +189,28 @@ km
 ```
 ```{r}
 fviz_cluster(km, data = clean_movies,geom = "point", ellipse.type = "norm")
+```
+## Fuzzy c-means
+```{r}
+fuzzy<-fcm(clean_movies,3,iter.max=300)
+#fuzzy
+```
+```{r}
+fuzzy2 <- ppclust2(fuzzy, "kmeans")
+fviz_cluster(fuzzy2, data = clean_movies, 
+  ellipse.type = "convex",
+  palette = "jco",
+  repel = TRUE)
+```
+## Gaussian Mixture
+```{r}
+Hierar_cl <- hclust(dist(clean_movies),method = "complete")
+Hierar_cl
+```
+```{r}
+fuzzy2 <- ppclust2(fuzzy, "kmeans")
+fviz_cluster(fuzzy2, data = clean_movies, 
+  ellipse.type = "convex",
+  palette = "jco",
+  repel = TRUE)
 ```
