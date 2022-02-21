@@ -18,6 +18,7 @@ library(tidyverse)
 library(ppclust)
 library(cluster)
 library(mclust)
+library(fclust)
 ```
 Funciones generales
 ```{r}
@@ -125,21 +126,27 @@ ggcorrplot(correlation, hc.order = TRUE, type = "lower",
 
 ```
 Con base en la correlación de las variables y para faciliar el procesos de agrupamiento y disminuir la dimensión de variables a agrupar, se sabe que se puede utilizar únicamente una de las variables correlacionadas. En este caso, las variables altamente correlacionadas son:
-* Presupuesto con Ganancias
-* Presupuesto con Cantidad de hombres en el cast
-* Ganancias con Cantidad de votos
+* Ingreso con Cantidad de votos
+* Popularidad con Cantidad de votos
+* Presupuesto con Cantidad de votos
+* Cantidad de actores con Cantidad de votos
+* Cantidad de hombres en el cast con Cantidad de votos
+* Popularidad con Ingreso
+* Ingreso con Presupuesto
+* Cantidad de hombres en el cast con Presupuesto
 * Cantidad de actores con Cantidad de mujeres en el cast
 * Cantidad de actores con Cantidad de hombres en el cast
 Con base en lo anterior, se dejaran fuera las siguientes variables para el agrupamiento:
+* Ingreso
 * Presupuesto
+* Popularidad
 * Cantidad de hombres en el cast
 * Cantidad de mujeres en el cast
-* Cantidad de votos
 
 ## Estandarización de variables
 Todas las características estén en un mismo rango de valores
 ```{r}
-useless <- c('id','video', 'releaseDate','originalTitle', 'originalLanguage', 'title', 'homePage', 'director', 'genres', 'productionCompany', 'productionCompanyCountry', 'productionCountry', 'actors', 'actorsCharacter', 'voteAvg', 'budget', 'castMenAmount', 'castWomenAmount', 'voteCount')
+useless <- c('id','video', 'releaseDate','originalTitle', 'originalLanguage', 'title', 'homePage', 'director', 'genres', 'productionCompany', 'productionCompanyCountry', 'productionCountry', 'actors', 'actorsCharacter', 'voteAvg', 'budget', 'revenue','popularity', 'castMenAmount', 'castWomenAmount')
 clean_movies <- movies[ , !(names(movies) %in% useless)]
 
 data <- as.matrix(clean_movies)
@@ -180,63 +187,106 @@ labs(subtitle = "Número óptimo de clusters elbow-method")
 groups <- NbClust(clean_movies, distance = "euclidean", min.nc = 2,
               max.nc = 10, method = "complete", index ="all")
 ```
-Con base en la gráfica del codo, y en el cálculo del número de clusters por 30 algoritmos diferentes, se considera que la cantidad adecuada de agrupamiento de los datos es 3.
+Con base en la gráfica del codo, y en el cálculo del número de clusters por 30 algoritmos diferentes, se considera que la cantidad adecuada de agrupamiento de los datos es 2.
 
 # Algoritmos de agrupamiento
+Utilice 3 algoritmos existentes para agrupamiento. Compare los resultados generados por cada uno.
+
 ## K-Medias
 ```{r}
-km<-kmeans(clean_movies,3,iter.max =300)
-#km
+km<-kmeans(clean_movies,2,iter.max =300)
+kmeans_groups <- km$cluster
 ```
 ```{r}
 fviz_cluster(km, data = clean_movies,geom = "point", ellipse.type = "norm")
 ```
-## Fuzzy c-means
+## Clustering Jerárquico
 ```{r}
-fuzzy<-fcm(clean_movies,3,iter.max=300)
-#fuzzy
+# Calculando la matriz de distnacia para hacer el agrupamiento jerárquico
+distance_matriz <- clean_movies %>% dist()
+# Creación del clustering jerárquico con la distancia euclidiana
+hc <- hclust(distance_matriz, method = 'ward.D2')
+# Graficando el cluster
+fviz_dend(hc, k=2, rect = T, cex = .5)
 ```
-```{r}
-fuzzy2 <- ppclust2(fuzzy, "kmeans")
-fviz_cluster(fuzzy2, data = clean_movies, 
-  ellipse.type = "convex",
-  palette = "jco",
-  repel = TRUE)
+```{r Agrupamiento/corte}
+# Agrupamiento
+hc_groups <- cutree(hc, k=2)
+table(hc_groups)
 ```
 ## Mixture of gaussians
 ```{r mixture of gaussians}
-mc<-Mclust(clean_movies,3)
-summary(mc)
+mc<-Mclust(clean_movies,2)
+mc_groups <- mc$classification
 ```
-```{r cortando el dendrograma}
-groups<-cutree(Hierar_cl,k=3) #corta el dendograma, determinando el grupo de cada fila
-table(groups)
-```
-#### Silueta clustering jerárquico 
-### Silueta para k-means
+
+# Calidad de agrupamiento
+Determine la calidad del agrupamiento hecho por cada algoritmo con el método de la silueta. Discuta
+los resultados.
+
+## Silueta para k-means
 ```{r silueta clustering jerarquico k-means}
 silkm<-silhouette(km$cluster,dist(clean_movies))
-mean(silkm[,3]) 
+mean(silkm[,3])
 ```
-Vamos a graficar la silueta para visualizar los resultados de cada cluster  
+Vamos a graficar la silueta para visualizar los resultados de cada cluster
 ```{r grafico de silueta clusterig jerarquico 1}
-plot(silkm, cex.names=.4, col=1:3)
+km_clusters <- eclust(x = clean_movies, FUNcluster = "kmeans", k = 2,
+                      hc_metric = "euclidean", nstart = 50, graph = FALSE)
+fviz_silhouette(sil.obj = km_clusters, print.summary = TRUE, palette = "jco",
+                ggtheme = theme_classic())
 ```
-### Silueta para Hierarchical clustering
-```{r silueta clustering jerarquico}
-silhc<-silhouette(groups,dist(clean_movies))
-mean(silhc[,3]) 
+
+## Silueta clustering jerárquico
+```{r}
+silhc <- silhouette(hc_groups, distance_matriz)
+mean(silhc[, 3])
+fviz_silhouette(sil.obj = silhc, print.summary = TRUE, palette = "jco",
+                ggtheme = theme_classic())
 ```
-### Esto a veces funciona 
-```{r grafico de silueta clusterig jerarquico 2} 
-plot(silhc, cex.names=.4, col=1:3)
-```
-#### Silueta para mixture of gaussians  
+
+## Silueta para mixture of gaussians
 ```{r silueta de mezcla de gausianos}
 clean_movies$mxGau<-mc$classification
 silmg<-silhouette(mc$classification,dist(clean_movies))
 mean(silmg[,3]) 
 ```
 ```{r grafico de la silueta mixture of gaussians}
-plot(silmg, cex.names=.4, col=1:3)
+# plot(silmg, cex.names=.4, col=1:3)
+
+fviz_silhouette(sil.obj = silmg, print.summary = TRUE, palette = "jco",
+                ggtheme = theme_classic())
 ```
+Con base en el gráfico de la silueta y el valor promedio de la misma, se puede concluir, que para este set de datos de movies en particular,
+el mejor algoritmo de agrupamiento es k-means, con un valor promedio de silueta de 0.17.
+
+# Interpretación de los grupos
+Interprete los grupos basados en el conocimiento que tiene de los datos.  Recuerde investigar las
+medidas de tendencia central de las variables continuas y las tablas de frecuencia de las variables
+categóricas pertenecientes a cada grupo. Identifique hallazgos interesantes debido a las
+agrupaciones y describa para qué le podría servir.
+
+## Análisis de agrupamiento K-means
+```{r}
+genres <- gsub('|', ',', movies$genres, fixed = TRUE)
+new_movies <- movies %>% separate(genres, c('main_genre', 'genres'))
+table(new_movies$main_genre, kmeans_groups)
+```
+Se puede observar en la tabla anterior que el grupo 1 se encuentra mayormente concentrado en los géneros Acción, Aventura y Horror. Dando como línea de pensamiento que al grupo de personas que le gustan las películas de Acción también les gustan las películas de Aventura y Horror.
+```{r}
+movies$release_date  <- as.Date(as.character(movies$releaseDate), "%Y-%m-%d")
+movies$release_month <- format(movies$release_date, format = "%m")
+table(movies$release_month, hc_groups)
+```
+Con base a la tabla mostrada anteriormente, se puede observar que la diferencia de asociación entre los grupos 1 y 2 es mayor en junio y diciembre que en los meses de enero a mayo.
+Por lo tal, se puede inferir que la variable de agrupamiento utilizada por el clustering jerárquico, siendo limitada por el semestre de lanzamiento.
+```{r}
+movies$release_date  <- as.Date(as.character(movies$releaseDate), "%Y-%m-%d")
+movies$release_year <- format(movies$release_date, format = "%Y")
+table(movies$originalLanguage, mc_groups)
+table(movies$release_year, mc_groups)
+```
+En base a los resultados de las tablas anteriores, se determina que las películas que fueron lanzadas entre el rango de años de 1931 a 1992 predenominaba aquellas cuyo idioma original era inglés. Sin embargo, a partir de 1993 hubo un incremento entre los idiomas originales de las películas, estando entre ellos español, japonés y francés.
+
+## Conclusiones
+ Desde un punto de vista de Mercadeo, se puede generalizar que a las personas que les gustan las películas de Acción pueden estar interesados en Horror y Aventura. Y la permutación de todos estos. Por otro lado, gracias al agrupamiento de mezcla de Gaussianos, se puede inferir que con el paso del tiempo se ha incrementado la variedad de idiomas originales de las películas. Esto podría ser causado por la globalización y el aumento de doblajes y subtitulado de las películas. Finalmente, también se encontró que existe una tendencia a lanzar más películas en el último semestre del año en comparación con el primero.
