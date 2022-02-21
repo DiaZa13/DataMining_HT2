@@ -21,11 +21,11 @@ library(cluster)
 Funciones generales
 ```{r}
 # Extraído de: https://community.rstudio.com/t/is-there-a-function-to-replace-outliers/85091/6
-replaceOutliers <- function(c){
-b <- boxplot(c, plot = FALSE)
-s1 <- c
-s1[which(c %in% b$out)] <- mean(c[which(! c %in% b$out)],na.rm=TRUE)
-return(s1)
+replaceOutliers <- function(c) {
+  b <- boxplot(c, plot = FALSE)
+  s1 <- c
+  s1[which(c %in% b$out)] <- mean(c[which(! c %in% b$out)],na.rm=TRUE)
+  return(s1)
 }
 ```
 Lectura del dataset
@@ -96,19 +96,19 @@ for (x in columns){
 # NO EJECUTAR AL HACER KNIT, SOLO PARA PRUEBAS
 # Debido a las diversas escalas de cada una de las variables, es necesario realizar un boxplot para cada una
 # budget, revenue, runtime, castPopularity, popularity, voteCount, genresAmount, productionCoAmount, productionCountriesAmount, actorsAmount, castWomenAmount, castMenAmount
-clean_movies <- movies[ , !(names(movies) %in% useless)]
-boxplot(clean_movies$budget, horizontal = TRUE)
-boxplot(clean_movies$revenue, horizontal = TRUE)
-boxplot(clean_movies$runtime, horizontal = TRUE)
-boxplot(clean_movies$castPopularity, horizontal = TRUE)
-boxplot(clean_movies$popularity, horizontal = TRUE)
-boxplot(clean_movies$voteCount, horizontal = TRUE)
-boxplot(clean_movies$genresAmount, horizontal = TRUE)
-boxplot(clean_movies$productionCoAmount, horizontal = TRUE)
-boxplot(clean_movies$productionCountriesAmount, horizontal = TRUE)
-boxplot(clean_movies$actorsAmount, horizontal = TRUE)
-boxplot(clean_movies$castWomenAmount, horizontal = TRUE)
-boxplot(clean_movies$castMenAmount, horizontal = TRUE)
+# clean_movies <- movies[ , !(names(movies) %in% useless)]
+# boxplot(clean_movies$budget, horizontal = TRUE)
+# boxplot(clean_movies$revenue, horizontal = TRUE)
+# boxplot(clean_movies$runtime, horizontal = TRUE)
+# boxplot(clean_movies$castPopularity, horizontal = TRUE)
+# boxplot(clean_movies$popularity, horizontal = TRUE)
+# boxplot(clean_movies$voteCount, horizontal = TRUE)
+# boxplot(clean_movies$genresAmount, horizontal = TRUE)
+# boxplot(clean_movies$productionCoAmount, horizontal = TRUE)
+# boxplot(clean_movies$productionCountriesAmount, horizontal = TRUE)
+# boxplot(clean_movies$actorsAmount, horizontal = TRUE)
+# boxplot(clean_movies$castWomenAmount, horizontal = TRUE)
+# boxplot(clean_movies$castMenAmount, horizontal = TRUE)
 ```
 
 ## Correlación entre variables
@@ -148,7 +148,7 @@ movies <- mutate_if(movies, is.numeric, scale)
 ```
 ```{r}
 # Gráfico luego de escalar los datos
-clean_movies <- movies[ , !(names(movies) %in% cualitative)]
+clean_movies <- movies[ , !(names(movies) %in% useless)]
 data <- as.matrix(clean_movies)
 barplot(data, beside = TRUE, main = 'Comparación de observaciones', las=2)
 ```
@@ -210,32 +210,4 @@ summary(mc)
 ```{r cortando el dendrograma}
 groups<-cutree(Hierar_cl,k=3) #corta el dendograma, determinando el grupo de cada fila
 table(groups)
-```
-#### Silueta clustering jerárquico 
-### Silueta para k-means
-```{r silueta clustering jerarquico}
-silkm<-silhouette(km$cluster,dist(clean_movies))
-mean(silkm[,3]) 
-```
-Vamos a graficar la silueta para visualizar los resultados de cada cluster  
-```{r grafico de silueta clusterig jerarquico}
-plot(silkm, cex.names=.4, col=1:3)
-```
-### Silueta para Hierarchical clustering
-```{r silueta clustering jerarquico}
-silhc<-silhouette(groups,dist(clean_movies))
-mean(silhc[,3]) 
-```
-### Esto a veces funciona 
-```{r grafico de silueta clusterig jerarquico} 
-plot(silhc, cex.names=.4, col=1:3)
-```
-#### Silueta para mixture of gaussians  
-```{r silueta de mezcla de gausianos}
-clean_movies$mxGau<-mc$classification
-silmg<-silhouette(mc$classification,dist(clean_movies))
-mean(silmg[,3]) 
-```
-```{r grafico de la silueta mixture of gaussians}
-plot(silmg, cex.names=.4, col=1:3)
 ```
