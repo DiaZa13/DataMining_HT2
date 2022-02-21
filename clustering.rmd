@@ -115,7 +115,7 @@ boxplot(clean_movies$castMenAmount, horizontal = TRUE)
 ## Correlación entre variables
 ```{r}
 clean_movies <- movies[ , !(names(movies) %in% useless)]
-correlation <- cor(clean_movies, method="kendall")
+correlation <- cor(clean_movies, method="spearman")
 p.mat <- cor_pmat(clean_movies)
 ggcorrplot(correlation, hc.order = TRUE, type = "lower",
    outline.col = "white",
