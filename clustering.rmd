@@ -17,6 +17,7 @@ library(ggcorrplot)
 library(tidyverse)
 library(ppclust)
 library(cluster)
+library(mclust)
 ```
 Funciones generales
 ```{r}
